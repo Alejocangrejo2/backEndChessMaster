@@ -56,6 +56,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/analysis/**").permitAll()
                 // Endpoints protegidos (requieren JWT)
                 .requestMatchers("/api/game/**").authenticated()
+                .requestMatchers("/api/room/**").authenticated()
                 .requestMatchers("/api/friends/**").authenticated()
                 // Cualquier otro request es permitido
                 .anyRequest().permitAll()
