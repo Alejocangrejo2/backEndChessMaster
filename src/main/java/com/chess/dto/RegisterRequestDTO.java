@@ -1,17 +1,19 @@
 package com.chess.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 /**
  * DTO — Solicitud de registro de usuario.
- * Valida que los campos no estén vacíos.
+ * Valida que los campos no estén vacíos y que el email sea válido.
  */
 public class RegisterRequestDTO {
 
     @NotBlank(message = "El username es requerido")
     private String username;
 
-    @NotBlank(message = "El email es requerido")
+    @NotBlank(message = "El correo electronico es requerido")
+    @Email(message = "Ingresa un correo electronico valido")
     private String email;
 
     @NotBlank(message = "La contraseña es requerida")
