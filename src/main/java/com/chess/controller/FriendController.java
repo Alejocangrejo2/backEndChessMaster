@@ -33,11 +33,19 @@ public class FriendController {
     @GetMapping("/list")
     public ResponseEntity<?> getFriendsList(Authentication auth) {
         try {
+            // Also register heartbeat when listing friends
+            friendService.heartbeat(auth.getName());
             List<Map<String, Object>> friends = friendService.getFriendsList(auth.getName());
             return ResponseEntity.ok(friends);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+    }
+
+    @PostMapping("/heartbeat")
+    public ResponseEntity<?> heartbeat(Authentication auth) {
+        friendService.heartbeat(auth.getName());
+        return ResponseEntity.ok(Map.of("status", "online"));
     }
 
     @GetMapping("/requests")

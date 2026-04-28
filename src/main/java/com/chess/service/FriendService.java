@@ -8,7 +8,9 @@ import com.chess.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
  * Funcionalidades:
  * - Buscar usuarios por nombre
  * - Enviar / aceptar / rechazar solicitudes de amistad
- * - Lista de amigos con estado online
+ * - Lista de amigos con estado online (heartbeat)
  * - Eliminar amigos
  */
 @Service
@@ -26,12 +28,31 @@ public class FriendService {
     private final FriendshipRepository friendshipRepo;
     private final UserRepository userRepo;
 
-    // Track online users (in-memory, replaced by WebSocket later)
-    private final Set<String> onlineUsers = Collections.synchronizedSet(new HashSet<>());
+    /** Heartbeat map: username → last activity timestamp */
+    private final ConcurrentHashMap<String, Instant> heartbeatMap = new ConcurrentHashMap<>();
+
+    /** Users are considered online if heartbeat was within this duration (seconds) */
+    private static final long ONLINE_THRESHOLD_SECONDS = 120;
 
     public FriendService(FriendshipRepository friendshipRepo, UserRepository userRepo) {
         this.friendshipRepo = friendshipRepo;
         this.userRepo = userRepo;
+    }
+
+    /**
+     * Register a heartbeat for a user — marks them as online.
+     */
+    public void heartbeat(String username) {
+        heartbeatMap.put(username, Instant.now());
+    }
+
+    /**
+     * Check if a user is online (heartbeat within threshold).
+     */
+    public boolean isOnline(String username) {
+        Instant lastBeat = heartbeatMap.get(username);
+        if (lastBeat == null) return false;
+        return Instant.now().getEpochSecond() - lastBeat.getEpochSecond() < ONLINE_THRESHOLD_SECONDS;
     }
 
     /**
@@ -135,7 +156,7 @@ public class FriendService {
             result.put("id", f.getId().toString());
             result.put("username", friend.getUsername());
             result.put("rating", friend.getRating());
-            result.put("online", onlineUsers.contains(friend.getUsername()));
+            result.put("online", isOnline(friend.getUsername()));
             return result;
         }).collect(Collectors.toList());
     }
@@ -177,13 +198,5 @@ public class FriendService {
         friendshipRepo.delete(f);
     }
 
-    // === Online tracking (in-memory, future: WebSocket) ===
-
-    public void setOnline(String username) {
-        onlineUsers.add(username);
-    }
-
-    public void setOffline(String username) {
-        onlineUsers.remove(username);
-    }
+    // Online tracking is handled by heartbeat() method above
 }
