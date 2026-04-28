@@ -14,3 +14,4 @@ public class ChessApplication {
         SpringApplication.run(ChessApplication.class, args);
     }
 }
+
