@@ -12,10 +12,11 @@ import java.util.Map;
  * Controller REST para salas de juego multijugador.
  *
  * Endpoints:
- * - POST /api/room/create         -> Crear sala (retorna codigo)
- * - POST /api/room/join/{code}    -> Unirse a sala
+ * - POST /api/room/create         -> Crear sala
+ * - POST /api/room/join/{code}    -> Unirse
  * - GET  /api/room/{code}/state   -> Polling del estado
  * - POST /api/room/{code}/move    -> Hacer movimiento
+ * - POST /api/room/{code}/end     -> Finalizar partida (mate, tablas, etc.)
  * - POST /api/room/{code}/resign  -> Rendirse
  */
 @RestController
@@ -67,13 +68,38 @@ public class GameRoomController {
             String from = body.get("from");
             String to = body.get("to");
             String fen = body.get("fen");
-            GameRoom room = roomService.makeMove(code, auth.getName(), from, to, fen);
+            String san = body.getOrDefault("san", "");
+            GameRoom room = roomService.makeMove(code, auth.getName(), from, to, fen, san);
             return ResponseEntity.ok(room.toMap(auth.getName()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
+    /**
+     * POST /api/room/{code}/end
+     * Finalizar partida con razon correcta.
+     * Body: { "reason": "CHECKMATE|STALEMATE|DRAW", "winner": "white|black|null" }
+     */
+    @PostMapping("/{code}/end")
+    public ResponseEntity<?> endGame(
+            @PathVariable String code,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        try {
+            String reason = body.getOrDefault("reason", "UNKNOWN");
+            String winner = body.get("winner");
+            GameRoom room = roomService.endGame(code, reason, winner);
+            return ResponseEntity.ok(room.toMap(auth.getName()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/room/{code}/resign
+     * Rendirse explicitamente.
+     */
     @PostMapping("/{code}/resign")
     public ResponseEntity<?> resign(@PathVariable String code, Authentication auth) {
         try {

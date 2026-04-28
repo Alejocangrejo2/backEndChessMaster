@@ -4,10 +4,11 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Servicio de salas multijugador en memoria.
- * Flujo: crear sala -> compartir codigo -> unirse -> polling de estado -> movimientos.
+ * Gestiona: crear, unirse, mover, finalizar, historial.
  */
 @Service
 public class GameRoomService {
@@ -24,6 +25,7 @@ public class GameRoomService {
         room.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         room.moves = new ArrayList<>();
         room.currentTurn = "white";
+        room.endReason = null;
         room.createdAt = Instant.now();
         room.lastActivity = Instant.now();
         rooms.put(code, room);
@@ -47,7 +49,7 @@ public class GameRoomService {
         return room;
     }
 
-    public GameRoom makeMove(String code, String username, String from, String to, String newFen) {
+    public GameRoom makeMove(String code, String username, String from, String to, String newFen, String san) {
         GameRoom room = rooms.get(code.toUpperCase());
         if (room == null) throw new RuntimeException("Sala no encontrada");
         if (!"ACTIVE".equals(room.status)) throw new RuntimeException("Partida no activa");
@@ -59,7 +61,9 @@ public class GameRoomService {
         GameMove move = new GameMove();
         move.from = from;
         move.to = to;
+        move.san = san;
         move.player = username;
+        move.color = isWhiteTurn ? "white" : "black";
         move.fen = newFen;
         move.moveNumber = room.moves.size() + 1;
         room.moves.add(move);
@@ -71,11 +75,17 @@ public class GameRoomService {
         return room;
     }
 
-    public GameRoom endGame(String code, String status, String winner) {
+    /**
+     * Endpoint correcto para terminar partida.
+     * Distingue: CHECKMATE, STALEMATE, DRAW, RESIGNED, ABANDONED
+     */
+    public GameRoom endGame(String code, String endReason, String winner) {
         GameRoom room = rooms.get(code.toUpperCase());
         if (room == null) throw new RuntimeException("Sala no encontrada");
-        room.status = status;
-        room.winner = winner;
+        if ("FINISHED".equals(room.status)) return room; // ya terminada
+        room.status = "FINISHED";
+        room.endReason = endReason; // CHECKMATE, STALEMATE, DRAW, RESIGNED, ABANDONED
+        room.winner = winner;       // "white", "black", or null (draw)
         room.lastActivity = Instant.now();
         return room;
     }
@@ -90,8 +100,10 @@ public class GameRoomService {
         return code;
     }
 
+    // === Inner classes ===
+
     public static class GameRoom {
-        public String code, whitePlayer, blackPlayer, status, fen, currentTurn, lastMove, winner;
+        public String code, whitePlayer, blackPlayer, status, fen, currentTurn, lastMove, winner, endReason;
         public List<GameMove> moves;
         public Instant createdAt, lastActivity;
 
@@ -105,10 +117,24 @@ public class GameRoomService {
             map.put("currentTurn", currentTurn);
             map.put("lastMove", lastMove);
             map.put("winner", winner);
+            map.put("endReason", endReason);
             map.put("moveCount", moves != null ? moves.size() : 0);
             if (forUsername != null) {
                 if (forUsername.equals(whitePlayer)) map.put("myColor", "white");
                 else if (forUsername.equals(blackPlayer)) map.put("myColor", "black");
+            }
+            // Include move list for review
+            if (moves != null) {
+                map.put("moves", moves.stream().map(m -> {
+                    Map<String, Object> mv = new LinkedHashMap<>();
+                    mv.put("moveNumber", m.moveNumber);
+                    mv.put("from", m.from);
+                    mv.put("to", m.to);
+                    mv.put("san", m.san);
+                    mv.put("color", m.color);
+                    mv.put("fen", m.fen);
+                    return mv;
+                }).collect(Collectors.toList()));
             }
             return map;
         }
@@ -116,6 +142,6 @@ public class GameRoomService {
 
     public static class GameMove {
         public int moveNumber;
-        public String from, to, player, fen;
+        public String from, to, san, player, color, fen;
     }
 }
