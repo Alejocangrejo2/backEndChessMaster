@@ -22,7 +22,7 @@ public class Challenge {
         this.id = UUID.randomUUID().toString().substring(0, 8);
         this.fromUser = fromUser;
         this.toUser = toUser;
-        this.roomCode = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        this.roomCode = null; // Set by ChallengeService.accept()
         this.timestamp = Instant.now().toEpochMilli();
         this.status = "pending";
     }
