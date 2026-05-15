@@ -2,16 +2,17 @@ package com.chess;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Clase principal de la aplicación Spring Boot.
  * Punto de entrada del backend de Chess Master.
  */
 @SpringBootApplication
+@EnableScheduling
 public class ChessApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(ChessApplication.class, args);
     }
 }
-

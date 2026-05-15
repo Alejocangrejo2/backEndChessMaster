@@ -58,6 +58,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/game/**").authenticated()
                 .requestMatchers("/api/room/**").authenticated()
                 .requestMatchers("/api/friends/**").authenticated()
+                .requestMatchers("/api/challenge/**").authenticated()
                 // Cualquier otro request es permitido
                 .anyRequest().permitAll()
             )
