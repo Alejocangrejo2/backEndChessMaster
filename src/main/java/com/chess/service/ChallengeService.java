@@ -18,6 +18,11 @@ public class ChallengeService {
 
     // id -> Challenge
     private final Map<String, Challenge> challenges = new ConcurrentHashMap<>();
+    private final GameRoomService roomService;
+
+    public ChallengeService(GameRoomService roomService) {
+        this.roomService = roomService;
+    }
 
     /**
      * Crear un nuevo reto de fromUser hacia toUser.
@@ -57,11 +62,18 @@ public class ChallengeService {
     }
 
     /**
-     * Aceptar un reto.
+     * Aceptar un reto. Crea la sala automaticamente y une a ambos jugadores.
      */
     public Challenge accept(String challengeId) {
         Challenge c = challenges.get(challengeId);
         if (c == null || c.isExpired()) return null;
+        
+        // Create room with challenger as white
+        String roomCode = roomService.createRoom(c.getFrom());
+        // Join the accepter as black
+        roomService.joinRoom(roomCode, c.getTo());
+        
+        c.setRoomCode(roomCode);
         c.setStatus("accepted");
         return c;
     }
